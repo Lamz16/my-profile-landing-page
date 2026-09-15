@@ -468,10 +468,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onRefreshData }
               />
             </div>
 
-            <div className="p-3 bg-zinc-900/60 border border-zinc-800 rounded text-[10px] text-zinc-400">
-              <span className="text-amber-500 font-bold">Kredensial Default:</span> Username: <strong className="text-white">admin</strong> | Password: <strong className="text-white">admin123</strong>
-            </div>
-
             <button
               type="submit"
               disabled={authLoading}

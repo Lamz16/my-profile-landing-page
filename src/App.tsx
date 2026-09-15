@@ -4,7 +4,6 @@ import AboutSection from './components/AboutSection';
 import PortfolioSection from './components/PortfolioSection';
 import CertificateSection from './components/CertificateSection';
 import ContactSection from './components/ContactSection';
-import EditModal from './components/EditModal';
 import { AdminPanel } from './components/AdminPanel';
 
 import { ProfileInfo, PortfolioItem, CertificateItem } from './types';
@@ -17,7 +16,6 @@ export default function App() {
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>(DEFAULT_PORTFOLIO);
   const [certificates, setCertificates] = useState<CertificateItem[]>(DEFAULT_CERTIFICATES);
   
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
 
   // Load profile from PostgreSQL API on mount
@@ -66,7 +64,6 @@ export default function App() {
       {/* 1. Header/Navigation */}
       <Header
         name={profile.name}
-        onOpenEdit={() => setIsEditModalOpen(true)}
         onOpenAdmin={() => setIsAdminPanelOpen(true)}
       />
 
@@ -155,18 +152,6 @@ export default function App() {
           onRefreshData={handleRefreshAllData}
         />
       )}
-
-      {/* 8. Quick Edit Modal */}
-      <EditModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        profile={profile}
-        portfolio={portfolio}
-        certificates={certificates}
-        onSaveProfile={handleSaveProfile}
-        onSavePortfolio={handleSavePortfolio}
-        onSaveCertificates={handleSaveCertificates}
-      />
 
     </div>
   );
