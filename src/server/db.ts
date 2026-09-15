@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import pg from 'pg';
 import { newDb } from 'pg-mem';
 import bcrypt from 'bcryptjs';
@@ -15,23 +18,24 @@ export async function getDb(): Promise<DBAdapter> {
 
   const databaseUrl = process.env.DATABASE_URL;
 
-  if (databaseUrl && !databaseUrl.includes('localhost:5432')) {
+  if (databaseUrl && databaseUrl.trim() !== '') {
     try {
       console.log('Connecting to PostgreSQL database via DATABASE_URL...');
+      const isLocal = databaseUrl.includes('localhost') || databaseUrl.includes('127.0.0.1');
       const pool = new Pool({
         connectionString: databaseUrl,
-        ssl: databaseUrl.includes('sslmode=disable') ? false : { rejectUnauthorized: false }
+        ssl: isLocal || databaseUrl.includes('sslmode=disable') ? false : { rejectUnauthorized: false }
       });
       // Test connection
       await pool.query('SELECT 1');
-      console.log('Successfully connected to external PostgreSQL database!');
+      console.log('Successfully connected to PostgreSQL database!');
       dbInstance = pool;
-    } catch (err) {
-      console.warn('Failed to connect to external PostgreSQL, falling back to embedded PostgreSQL engine:', err);
+    } catch (err: any) {
+      console.warn('Failed to connect to PostgreSQL via DATABASE_URL, falling back to embedded PostgreSQL engine:', err.message || err);
       dbInstance = createEmbeddedPg();
     }
   } else {
-    console.log('Initializing embedded PostgreSQL database engine...');
+    console.log('No DATABASE_URL set in .env. Initializing embedded PostgreSQL database engine...');
     dbInstance = createEmbeddedPg();
   }
 
