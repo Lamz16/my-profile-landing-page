@@ -1,0 +1,6 @@
+{
+  "name": "Profil Pribadi Modern",
+  "description": "Web profil pribadi yang modern, interaktif, dan responsif menampilkan bio, portofolio, sertifikat, dan kontak.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
