@@ -4,6 +4,7 @@ import { PortfolioItem, PaginatedResult } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { api } from '../api/client';
 import { Pagination } from './Pagination';
+import { ProjectCarousel } from './ProjectCarousel';
 
 interface PortfolioSectionProps {
   initialItems?: PortfolioItem[];
@@ -116,15 +117,13 @@ export default function PortfolioSection({ initialItems }: PortfolioSectionProps
                   transition={{ duration: 0.3 }}
                   className="group flex flex-col bg-[#14171c] border border-[#22262e] hover:border-[#f0643b]/40 rounded-sm overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 relative"
                 >
-                  {/* Image Container */}
+                  {/* Image Carousel Container */}
                   <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#0d0f12] border-b border-[#22262e]">
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover filter grayscale group-hover:grayscale-0 transition-all duration-500 group-hover:scale-102"
+                    <ProjectCarousel
+                      images={item.images && item.images.length > 0 ? item.images : [item.image]}
+                      title={item.title}
                     />
-                    <div className="absolute top-4 left-4 font-mono">
+                    <div className="absolute top-2 left-2 pointer-events-none z-10 font-mono">
                       <span className="inline-block bg-black/85 backdrop-blur-sm text-[#fca311] border border-[#22262e] text-[9px] uppercase tracking-widest font-black px-2.5 py-1 rounded-sm">
                         {item.category}
                       </span>

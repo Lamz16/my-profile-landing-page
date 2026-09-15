@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Save, Plus, Trash2, Mail, Award, FolderGit2, User, Key, Check, PlusCircle, LayoutGrid, Terminal } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Save, Plus, Trash2, Mail, Award, FolderGit2, User, Key, Check, PlusCircle, LayoutGrid, Terminal, Upload } from 'lucide-react';
 import { ProfileInfo, PortfolioItem, CertificateItem, Skill } from '../types';
 
 interface EditModalProps {
@@ -31,7 +31,23 @@ export default function EditModal({
   const [localCertificates, setLocalCertificates] = useState<CertificateItem[]>([...certificates]);
   const [localInbox, setLocalInbox] = useState<any[]>([]);
 
-  // Skill Add State
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Ukuran foto maksimal 5MB!');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setLocalProfile(prev => ({ ...prev, avatarUrl: reader.result as string }));
+    };
+    reader.readAsDataURL(file);
+  };
   const [newSkillName, setNewSkillName] = useState('');
   const [newSkillCategory, setNewSkillCategory] = useState<'frontend' | 'backend' | 'design' | 'other'>('frontend');
   const [newSkillLevel, setNewSkillLevel] = useState(80);
@@ -395,15 +411,43 @@ export default function EditModal({
                       className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-xs focus:outline-none focus:border-amber-500"
                     />
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-zinc-400">AVATAR URL (FOTO PROFIL)</label>
-                    <input
-                      type="text"
-                      name="avatarUrl"
-                      value={localProfile.avatarUrl}
-                      onChange={handleProfileChange}
-                      className="w-full bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-xs focus:outline-none focus:border-amber-500"
-                    />
+                  <div className="space-y-2 sm:col-span-2 p-3 bg-zinc-950 border border-zinc-800 rounded">
+                    <label className="text-[11px] font-bold text-amber-500 uppercase tracking-wider block">FOTO PROFIL / AVATAR</label>
+                    <div className="flex flex-col sm:flex-row items-center gap-3">
+                      <img
+                        src={localProfile.avatarUrl}
+                        alt="Preview"
+                        className="w-16 h-16 rounded object-cover border border-amber-500/50 shrink-0 bg-black"
+                      />
+                      <div className="space-y-1 flex-1 w-full">
+                        <div className="flex items-center gap-2">
+                          <input
+                            ref={avatarInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleAvatarFileChange}
+                            className="hidden"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => avatarInputRef.current?.click()}
+                            className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold px-3 py-1 rounded flex items-center gap-1.5 uppercase text-[11px] transition-all"
+                          >
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>PILIH FOTO DARI LOKAL</span>
+                          </button>
+                          <span className="text-[10px] text-zinc-400">Atau masukkan URL di bawah</span>
+                        </div>
+                        <input
+                          type="text"
+                          name="avatarUrl"
+                          value={localProfile.avatarUrl}
+                          onChange={handleProfileChange}
+                          placeholder="https://..."
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs focus:outline-none focus:border-amber-500 text-white"
+                        />
+                      </div>
+                    </div>
                   </div>
                   <div className="space-y-1">
                     <label className="text-[11px] font-bold text-zinc-400">E-MAIL</label>

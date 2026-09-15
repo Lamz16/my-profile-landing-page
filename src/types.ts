@@ -13,6 +13,7 @@ export interface PortfolioItem {
   description: string;
   category: string;
   image: string;
+  images?: string[];
   tags: string[];
   demoUrl?: string;
   githubUrl?: string;

@@ -108,11 +108,13 @@ async function initializeSchemaAndSeed(db: DBAdapter) {
       title VARCHAR(255) NOT NULL,
       description TEXT NOT NULL,
       image_url TEXT NOT NULL,
+      images_json TEXT,
       demo_url TEXT,
       github_url TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+    ALTER TABLE projects ADD COLUMN IF NOT EXISTS images_json TEXT;
 
     CREATE TABLE IF NOT EXISTS tags (
       id SERIAL PRIMARY KEY,

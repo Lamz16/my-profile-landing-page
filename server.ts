@@ -1,5 +1,6 @@
 import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
+import fs from 'fs';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import { createServer as createViteServer } from 'vite';
@@ -45,12 +46,52 @@ function requireAdminAuth(req: AuthRequest, res: Response, next: NextFunction) {
 async function startServer() {
   const app = express();
 
+  const uploadsDir = path.join(process.cwd(), 'uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+
   app.use(cors());
-  app.use(express.json());
+  app.use(express.json({ limit: '20mb' }));
+  app.use('/uploads', express.static(uploadsDir));
 
   // HEALTH CHECK
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', engine: 'PostgreSQL Full-Stack Engine', timestamp: new Date().toISOString() });
+  });
+
+  // IMAGE UPLOAD ROUTE (Saves WebP files to uploads/ folder on disk)
+  app.post('/api/upload', requireAdminAuth, async (req, res) => {
+    try {
+      const { image, filename } = req.body;
+      if (!image) {
+        return res.status(400).json({ error: 'Data gambar tidak ditemukan.' });
+      }
+
+      // If it's a Base64 string, write to disk in uploads directory
+      if (typeof image === 'string' && image.startsWith('data:image/')) {
+        const matches = image.match(/^data:image\/([a-zA-Z0-9]+);base64,(.+)$/);
+        if (matches) {
+          const ext = matches[1] === 'webp' ? 'webp' : matches[1];
+          const base64Data = matches[2];
+          const buffer = Buffer.from(base64Data, 'base64');
+          
+          const cleanName = (filename || 'image').replace(/[^a-zA-Z0-9_-]/g, '_');
+          const finalFileName = `${cleanName}_${Date.now()}.${ext}`;
+          const filePath = path.join(uploadsDir, finalFileName);
+
+          fs.writeFileSync(filePath, buffer);
+
+          const publicUrl = `/uploads/${finalFileName}`;
+          return res.json({ url: publicUrl, message: 'Upload gambar berhasil tersimpan ke folder /uploads!' });
+        }
+      }
+
+      // If already a URL or path, return as is
+      return res.json({ url: image, message: 'Upload gambar berhasil!' });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message || 'Gagal mengunggah foto.' });
+    }
   });
 
   // ADMIN AUTH ROUTES

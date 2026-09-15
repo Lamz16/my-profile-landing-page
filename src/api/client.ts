@@ -59,6 +59,12 @@ export const api = {
       body: JSON.stringify(profile)
     }),
 
+  uploadImage: (base64Image: string, filename?: string) =>
+    fetchApi<{ url: string; message: string }>('/api/upload', {
+      method: 'POST',
+      body: JSON.stringify({ image: base64Image, filename })
+    }),
+
   // Skills API
   getSkills: () => fetchApi<SkillItem[]>('/api/skills'),
   addSkill: (name: string, category: string) =>

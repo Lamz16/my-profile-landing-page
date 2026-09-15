@@ -41,7 +41,7 @@ export class ProjectRepository implements IProjectRepository {
 
     // Fetch Paginated Rows
     const dataSql = `
-      SELECT p.id, p.title, p.description, p.image_url as image, p.demo_url as "demoUrl", p.github_url as "githubUrl", pc.name as category
+      SELECT p.id, p.title, p.description, p.image_url as image, p.images_json as "imagesJson", p.demo_url as "demoUrl", p.github_url as "githubUrl", pc.name as category
       FROM projects p
       JOIN project_categories pc ON p.category_id = pc.id
       ${whereClause}
@@ -63,12 +63,25 @@ export class ProjectRepository implements IProjectRepository {
         WHERE ptm.project_id = $1
       `, [row.id]);
 
+      let parsedImages: string[] = [row.image];
+      if (row.imagesJson) {
+        try {
+          const arr = JSON.parse(row.imagesJson);
+          if (Array.isArray(arr) && arr.length > 0) {
+            parsedImages = arr;
+          }
+        } catch (e) {
+          // fallback to row.image
+        }
+      }
+
       projectItems.push({
         id: row.id.toString(),
         title: row.title,
         description: row.description,
         category: row.category,
-        image: row.image,
+        image: parsedImages[0] || row.image,
+        images: parsedImages,
         demoUrl: row.demoUrl || '',
         githubUrl: row.githubUrl || '',
         tags: tagsRes.rows.map(t => t.name)
@@ -90,7 +103,7 @@ export class ProjectRepository implements IProjectRepository {
     const db = await getDb();
     const numId = parseInt(id, 10);
     const res = await db.query(`
-      SELECT p.id, p.title, p.description, p.image_url as image, p.demo_url as "demoUrl", p.github_url as "githubUrl", pc.name as category
+      SELECT p.id, p.title, p.description, p.image_url as image, p.images_json as "imagesJson", p.demo_url as "demoUrl", p.github_url as "githubUrl", pc.name as category
       FROM projects p
       JOIN project_categories pc ON p.category_id = pc.id
       WHERE p.id = $1
@@ -106,12 +119,23 @@ export class ProjectRepository implements IProjectRepository {
       WHERE ptm.project_id = $1
     `, [numId]);
 
+    let parsedImages: string[] = [row.image];
+    if (row.imagesJson) {
+      try {
+        const arr = JSON.parse(row.imagesJson);
+        if (Array.isArray(arr) && arr.length > 0) {
+          parsedImages = arr;
+        }
+      } catch (e) {}
+    }
+
     return {
       id: row.id.toString(),
       title: row.title,
       description: row.description,
       category: row.category,
-      image: row.image,
+      image: parsedImages[0] || row.image,
+      images: parsedImages,
       demoUrl: row.demoUrl || '',
       githubUrl: row.githubUrl || '',
       tags: tagsRes.rows.map(t => t.name)
@@ -129,12 +153,16 @@ export class ProjectRepository implements IProjectRepository {
     const catRes = await db.query(`SELECT id FROM project_categories WHERE name = $1`, [project.category]);
     const catId = catRes.rows[0].id;
 
+    const imagesList = (project.images && project.images.length > 0) ? project.images : [project.image];
+    const imagesJsonStr = JSON.stringify(imagesList);
+    const primaryImage = imagesList[0] || project.image;
+
     // Insert project
     const insertRes = await db.query(`
-      INSERT INTO projects (category_id, title, description, image_url, demo_url, github_url)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO projects (category_id, title, description, image_url, images_json, demo_url, github_url)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING id
-    `, [catId, project.title, project.description, project.image, project.demoUrl || '', project.githubUrl || '']);
+    `, [catId, project.title, project.description, primaryImage, imagesJsonStr, project.demoUrl || '', project.githubUrl || '']);
 
     const newId = insertRes.rows[0].id;
 
@@ -150,7 +178,9 @@ export class ProjectRepository implements IProjectRepository {
 
     return {
       id: newId.toString(),
-      ...project
+      ...project,
+      image: primaryImage,
+      images: imagesList
     };
   }
 
@@ -166,17 +196,22 @@ export class ProjectRepository implements IProjectRepository {
     const catRes = await db.query(`SELECT id FROM project_categories WHERE name = $1`, [project.category]);
     const catId = catRes.rows[0].id;
 
+    const imagesList = (project.images && project.images.length > 0) ? project.images : [project.image];
+    const imagesJsonStr = JSON.stringify(imagesList);
+    const primaryImage = imagesList[0] || project.image;
+
     await db.query(`
       UPDATE projects SET
         category_id = $1,
         title = $2,
         description = $3,
         image_url = $4,
-        demo_url = $5,
-        github_url = $6,
+        images_json = $5,
+        demo_url = $6,
+        github_url = $7,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $7
-    `, [catId, project.title, project.description, project.image, project.demoUrl || '', project.githubUrl || '', numId]);
+      WHERE id = $8
+    `, [catId, project.title, project.description, primaryImage, imagesJsonStr, project.demoUrl || '', project.githubUrl || '', numId]);
 
     // Clear existing tag mappings
     await db.query(`DELETE FROM project_tag_map WHERE project_id = $1`, [numId]);
@@ -193,7 +228,9 @@ export class ProjectRepository implements IProjectRepository {
 
     return {
       id,
-      ...project
+      ...project,
+      image: primaryImage,
+      images: imagesList
     };
   }
 

@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   ShieldCheck, User, Code2, FolderGit2, Award, Mail, KeyRound, 
-  Plus, Trash2, Edit3, Save, X, Check, Eye, Lock, ArrowLeft, RefreshCw, AlertCircle
+  Plus, Trash2, Edit3, Save, X, Check, Eye, Lock, ArrowLeft, RefreshCw, AlertCircle,
+  Upload, Camera, Image as ImageIcon
 } from 'lucide-react';
 import { api, adminAuth } from '../api/client';
 import { ProfileInfo, SkillItem, PortfolioItem, CertificateItem, InboxMessage, PaginatedResult } from '../types';
 import { Pagination } from './Pagination';
+import { compressAndConvertToWebp } from '../utils/imageCompressor';
 
 interface AdminPanelProps {
   onClose: () => void;
@@ -42,11 +44,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onRefreshData }
     description: '',
     category: 'Mobile Development',
     image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&q=80',
+    images: ['https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&q=80'],
     tags: [],
     demoUrl: '',
     githubUrl: 'https://github.com/Lamz16'
   });
   const [tagInput, setTagInput] = useState('');
+
+  const projectFileInputRef = useRef<HTMLInputElement>(null);
+  const certFileInputRef = useRef<HTMLInputElement>(null);
 
   // Certificates state
   const [certsResult, setCertsResult] = useState<PaginatedResult<CertificateItem> | null>(null);
@@ -129,6 +135,96 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onRefreshData }
     setIsLoggedIn(false);
   };
 
+  const avatarFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Ukuran file foto maksimal 5MB!');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64String = reader.result as string;
+      try {
+        const res = await api.uploadImage(base64String, 'avatar');
+        if (profileData) {
+          setProfileData({ ...profileData, avatarUrl: res.url });
+        }
+      } catch (err: any) {
+        if (profileData) {
+          setProfileData({ ...profileData, avatarUrl: base64String });
+        }
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // MULTI-IMAGE UPLOAD FOR PROJECTS (COMPRESSED & CONVERTED TO WEBP ON SERVER DISK)
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
+
+  const handleProjectMultiFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploadingImages(true);
+    const uploadedUrls: string[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      try {
+        // Compress & convert file to WebP in browser canvas
+        const { base64Webp, fileName } = await compressAndConvertToWebp(file, 1600, 1600, 0.8);
+        // Upload WebP string to server /api/upload which writes to uploads/ folder
+        const res = await api.uploadImage(base64Webp, fileName);
+        uploadedUrls.push(res.url);
+      } catch (err: any) {
+        alert(`Gagal memproses file ${file.name}: ${err.message}`);
+      }
+    }
+
+    setProjectForm(prev => {
+      const existing = prev.images && prev.images.length > 0 ? prev.images : (prev.image ? [prev.image] : []);
+      const updated = [...existing, ...uploadedUrls];
+      return {
+        ...prev,
+        image: updated[0] || prev.image,
+        images: updated
+      };
+    });
+
+    setIsUploadingImages(false);
+  };
+
+  const handleRemoveProjectImage = (indexToRemove: number) => {
+    setProjectForm(prev => {
+      const currentList = prev.images && prev.images.length > 0 ? prev.images : [prev.image];
+      const updated = currentList.filter((_, idx) => idx !== indexToRemove);
+      return {
+        ...prev,
+        image: updated[0] || '',
+        images: updated
+      };
+    });
+  };
+
+  // CERTIFICATE WEBP UPLOAD HANDLER
+  const handleCertFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const { base64Webp, fileName } = await compressAndConvertToWebp(file, 1600, 1600, 0.8);
+      const res = await api.uploadImage(base64Webp, fileName);
+      setCertForm(prev => ({ ...prev, image: res.url }));
+    } catch (err: any) {
+      alert(`Gagal memproses foto sertifikat: ${err.message}`);
+    }
+  };
+
   // PROFILE SAVE
   const handleSaveProfile = async () => {
     if (!profileData) return;
@@ -174,12 +270,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onRefreshData }
   // PROJECT ACTIONS
   const handleOpenProjectModal = (proj?: PortfolioItem) => {
     if (proj) {
+      const imagesList = proj.images && proj.images.length > 0 ? proj.images : [proj.image];
       setEditingProject(proj);
       setProjectForm({
         title: proj.title,
         description: proj.description,
         category: proj.category,
-        image: proj.image,
+        image: imagesList[0] || proj.image,
+        images: imagesList,
         tags: [...proj.tags],
         demoUrl: proj.demoUrl || '',
         githubUrl: proj.githubUrl || ''
@@ -191,6 +289,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onRefreshData }
         description: '',
         category: 'Mobile Development',
         image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&q=80',
+        images: ['https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&q=80'],
         tags: ['Kotlin', 'Flutter', 'REST API'],
         demoUrl: '',
         githubUrl: 'https://github.com/Lamz16'
@@ -536,14 +635,42 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onRefreshData }
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-slate-400 uppercase text-[10px] font-bold">URL FOTO AVATAR</label>
-                  <input
-                    type="text"
-                    value={profileData.avatarUrl}
-                    onChange={e => setProfileData({ ...profileData, avatarUrl: e.target.value })}
-                    className="w-full bg-[#12151b] border border-[#22262e] rounded px-3 py-2 text-white focus:outline-none focus:border-amber-500"
-                  />
+                <div className="sm:col-span-2 p-4 bg-[#12151b] border border-[#22262e] rounded space-y-3">
+                  <label className="text-amber-500 uppercase text-[10px] font-bold block tracking-wider">FOTO PROFIL / AVATAR</label>
+                  <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <img
+                      src={profileData.avatarUrl}
+                      alt={profileData.name}
+                      className="w-20 h-20 rounded-md object-cover border-2 border-amber-500/50 shadow-md shrink-0 bg-black"
+                    />
+                    <div className="space-y-2 flex-1 w-full">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <input
+                          ref={avatarFileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAvatarFileUpload}
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => avatarFileInputRef.current?.click()}
+                          className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold px-3 py-1.5 rounded flex items-center gap-1.5 uppercase text-xs transition-all shadow-sm"
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>UPLOAD FOTO LOKAL</span>
+                        </button>
+                        <span className="text-[10px] text-slate-400">Atau masukkan URL foto di bawah</span>
+                      </div>
+                      <input
+                        type="text"
+                        value={profileData.avatarUrl}
+                        onChange={e => setProfileData({ ...profileData, avatarUrl: e.target.value })}
+                        placeholder="https://..."
+                        className="w-full bg-[#0d0f12] border border-[#22262e] rounded px-3 py-1.5 text-white focus:outline-none focus:border-amber-500 text-xs"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-1">
@@ -964,14 +1091,58 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onRefreshData }
                 </select>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-slate-400 uppercase text-[10px] font-bold">URL GAMBAR BANNER</label>
-                <input
-                  type="text"
-                  value={projectForm.image}
-                  onChange={e => setProjectForm({ ...projectForm, image: e.target.value })}
-                  className="w-full bg-[#0d0f12] border border-[#22262e] rounded px-3 py-2 text-white focus:outline-none focus:border-amber-500"
-                />
+              {/* MULTI-IMAGE GALLERY UPLOAD */}
+              <div className="p-4 bg-[#0d0f12] border border-[#22262e] rounded space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-amber-500 uppercase text-[10px] font-bold tracking-wider flex items-center gap-1.5">
+                    <ImageIcon className="w-3.5 h-3.5 text-amber-400" />
+                    <span>DOKUMENTASI GAMBAR PROYEK (BISA MULTI-INPUT & CAROUSEL)</span>
+                  </label>
+                  <span className="text-[9px] bg-emerald-950/60 text-emerald-400 border border-emerald-800/60 px-2 py-0.5 rounded font-mono">
+                    AUTO-COMPRESS WEBP
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    ref={projectFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleProjectMultiFileUpload}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    disabled={isUploadingImages}
+                    onClick={() => projectFileInputRef.current?.click()}
+                    className="bg-amber-500 hover:bg-amber-400 disabled:bg-zinc-700 text-zinc-950 font-bold px-3 py-1.5 rounded flex items-center gap-1.5 uppercase text-xs transition-all cursor-pointer shadow-sm"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>{isUploadingImages ? 'MENGOMPRES & MENGUNGGAH...' : 'UPLOAD GAMBAR LOKAL (MULTI)'}</span>
+                  </button>
+                  <span className="text-[10px] text-slate-400">Otomatis dikonversi ke WebP & disimpan ke folder /uploads</span>
+                </div>
+
+                {/* Images Preview Grid */}
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-2">
+                  {(projectForm.images && projectForm.images.length > 0 ? projectForm.images : [projectForm.image]).map((imgUrl, idx) => (
+                    <div key={idx} className="relative group aspect-video bg-black rounded border border-[#22262e] overflow-hidden">
+                      <img src={imgUrl} alt={`Preview ${idx + 1}`} className="w-full h-full object-cover" />
+                      <div className="absolute top-1 left-1 bg-black/80 px-1 py-0.5 text-[8px] text-amber-400 rounded font-mono font-bold">
+                        #{idx + 1}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveProjectImage(idx)}
+                        className="absolute top-1 right-1 bg-red-900/90 hover:bg-red-700 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                        title="Hapus gambar ini"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="space-y-1">
@@ -1086,14 +1257,37 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onRefreshData }
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-slate-400 uppercase text-[10px] font-bold">URL GAMBAR SERTIFIKAT</label>
-                <input
-                  type="text"
-                  value={certForm.image}
-                  onChange={e => setCertForm({ ...certForm, image: e.target.value })}
-                  className="w-full bg-[#0d0f12] border border-[#22262e] rounded px-3 py-2 text-white focus:outline-none focus:border-amber-500"
-                />
+              <div className="p-3 bg-[#0d0f12] border border-[#22262e] rounded space-y-2">
+                <label className="text-amber-500 uppercase text-[10px] font-bold tracking-wider block">GAMBAR SERTIFIKAT (WEBP CONVERTED)</label>
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                  <img src={certForm.image} alt="Preview" className="w-16 h-12 object-cover rounded border border-[#22262e] bg-black shrink-0" />
+                  <div className="space-y-1 flex-1 w-full">
+                    <div className="flex items-center gap-2">
+                      <input
+                        ref={certFileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleCertFileUpload}
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => certFileInputRef.current?.click()}
+                        className="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold px-3 py-1.5 rounded flex items-center gap-1.5 uppercase text-xs transition-all cursor-pointer"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>UPLOAD SERTIFIKAT (LOKAL)</span>
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      value={certForm.image}
+                      onChange={e => setCertForm({ ...certForm, image: e.target.value })}
+                      placeholder="https://..."
+                      className="w-full bg-[#12151b] border border-[#22262e] rounded px-3 py-1.5 text-white focus:outline-none focus:border-amber-500 text-xs"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
