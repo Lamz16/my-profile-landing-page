@@ -163,12 +163,12 @@ async function initializeSchemaAndSeed(db: DBAdapter) {
   const adminCheck = await db.query('SELECT COUNT(*) as count FROM admin_users');
   if (parseInt(adminCheck.rows[0].count, 10) === 0) {
     const salt = await bcrypt.genSalt(10);
-    const hash = await bcrypt.hash('admin123', salt);
+    const hash = await bcrypt.hash('lamz16022002', salt);
     await db.query(
       'INSERT INTO admin_users (username, password_hash) VALUES ($1, $2)',
       ['admin', hash]
     );
-    console.log('Default admin created: username="admin", password="admin123"');
+    console.log('Default admin created: username="admin", password="lamz16022002"');
   }
 
   // Seed Profile
