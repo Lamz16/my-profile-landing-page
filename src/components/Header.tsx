@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, Edit, Cpu, Award, FolderGit2, User, PhoneCall } from 'lucide-react';
+import { Menu, X, Edit, Cpu, Award, FolderGit2, User, PhoneCall, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface HeaderProps {
   name: string;
   onOpenEdit: () => void;
+  onOpenAdmin: () => void;
 }
 
-export default function Header({ name, onOpenEdit }: HeaderProps) {
+export default function Header({ name, onOpenEdit, onOpenAdmin }: HeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -68,16 +69,26 @@ export default function Header({ name, onOpenEdit }: HeaderProps) {
             ))}
           </nav>
 
-          {/* Edit Profile Trigger & Mobile Toggle */}
-          <div className="flex items-center gap-4">
+          {/* Admin Panel Trigger & Mobile Toggle */}
+          <div className="flex items-center gap-3">
+            <button
+              id="admin-portal-btn"
+              onClick={onOpenAdmin}
+              className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black text-xs uppercase tracking-wider py-2 px-3.5 rounded-sm transition-all duration-200 cursor-pointer shadow-md"
+              title="Akses portal admin PostgreSQL"
+            >
+              <ShieldCheck className="w-4 h-4 text-zinc-950" />
+              <span>ADMIN PORTAL</span>
+            </button>
+
             <button
               id="edit-profile-btn"
               onClick={onOpenEdit}
-              className="flex items-center gap-2 bg-[#14171c] hover:bg-[#1e222b] text-[#fca311] border border-[#2c313d] hover:border-[#fca311]/50 font-bold text-xs uppercase tracking-wider py-2 px-4 rounded-sm transition-all duration-200 cursor-pointer shadow-sm"
+              className="hidden lg:flex items-center gap-2 bg-[#14171c] hover:bg-[#1e222b] text-[#fca311] border border-[#2c313d] hover:border-[#fca311]/50 font-bold text-xs uppercase tracking-wider py-2 px-3 rounded-sm transition-all duration-200 cursor-pointer shadow-sm"
               title="Akses panel edit profil"
             >
               <Edit className="w-3.5 h-3.5 text-[#f0643b]" />
-              <span className="hidden sm:inline">KELOLA PROFIL</span>
+              <span>KELOLA</span>
             </button>
 
             <button

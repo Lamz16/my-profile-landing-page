@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Phone, MapPin, Send, CheckCircle2, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
+import { api } from '../api/client';
 
 interface ContactSectionProps {
   email: string;
@@ -35,10 +36,9 @@ export default function ContactSection({ email, phone, location }: ContactSectio
     setError(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Basic Validation
     if (!formData.name.trim() || !formData.email.trim() || !formData.subject.trim() || !formData.message.trim()) {
       setError('Harap lengkapi semua kolom formulir.');
       return;
@@ -51,32 +51,15 @@ export default function ContactSection({ email, phone, location }: ContactSectio
 
     setIsSending(true);
 
-    // Simulate sending message to local inbox mock
-    setTimeout(() => {
-      try {
-        const storedInbox = localStorage.getItem('profile_inbox');
-        const inbox = storedInbox ? JSON.parse(storedInbox) : [];
-        const newMessage = {
-          id: Date.now().toString(),
-          senderName: formData.name,
-          senderEmail: formData.email,
-          subject: formData.subject,
-          message: formData.message,
-          date: new Date().toLocaleString('id-ID', { hour12: false }),
-        };
-        inbox.unshift(newMessage);
-        localStorage.setItem('profile_inbox', JSON.stringify(inbox));
-
-        // Trigger storage event to synchronize open panel components
-        window.dispatchEvent(new Event('storage'));
-      } catch (e) {
-        console.error("Failed to save message to inbox mock: ", e);
-      }
-
+    try {
+      await api.sendMessage(formData.name, formData.email, formData.subject, formData.message);
       setIsSending(false);
       setIsSuccess(true);
       setFormData({ name: '', email: '', subject: '', message: '' });
-    }, 1200);
+    } catch (err: any) {
+      setIsSending(false);
+      setError(err.message || 'Gagal mengirim pesan ke server. Silakan coba lagi.');
+    }
   };
 
   return (

@@ -1,8 +1,11 @@
-export interface Skill {
+export interface SkillItem {
+  id?: string | number;
   name: string;
   category: 'frontend' | 'backend' | 'design' | 'other';
-  level: number; // 0 to 100
+  level?: number;
 }
+
+export type Skill = SkillItem;
 
 export interface PortfolioItem {
   id: string;
@@ -36,6 +39,26 @@ export interface ProfileInfo {
   instagramUrl: string;
   bio: string;
   longBio: string;
-  skills: Skill[];
+  skills: SkillItem[];
   avatarUrl: string;
+}
+
+export interface InboxMessage {
+  id: string;
+  senderName: string;
+  senderEmail: string;
+  subject: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface PaginatedResult<T> {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }
